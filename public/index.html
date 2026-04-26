@@ -281,10 +281,10 @@ async function generateAll() {
   await document.fonts.ready;
 
   const state = {
-    title:   document.getElementById('title').value   || 'キャッチコピーをここに入力',
-    subtitle:document.getElementById('subtitle').value|| 'サブテキスト・商品名',
-    price:   document.getElementById('price').value   || '¥3,980（税込）',
-    cta:     document.getElementById('cta').value     || '今すぐ購入',
+    title:   document.getElementById('title').value.trim(),
+    subtitle:document.getElementById('subtitle').value.trim(),
+    price:   document.getElementById('price').value.trim(),
+    cta:     document.getElementById('cta').value.trim(),
     badge:   selectedBadge,
     c1:      document.getElementById('colorMain').value,
     c2:      document.getElementById('colorAccent').value,
@@ -493,43 +493,47 @@ function drawRakutenTop(ctx, W, H, s) {
   }
 
   // タイトル
-  ctx.font = `900 ${H*0.22}px "Noto Sans JP",sans-serif`;
-  ctx.fillStyle = s.ct; ctx.textAlign='left'; ctx.textBaseline='alphabetic';
-  ctx.shadowColor='rgba(0,0,0,.3)'; ctx.shadowBlur=4;
   const titleY = s.badge ? 78 : 66;
-  fillWrapped(ctx, s.title, pad, titleY, split-pad*2-30, H*0.24, 2);
-  ctx.shadowBlur=0;
+  if (s.title) {
+    ctx.font = `900 ${H*0.22}px "Noto Sans JP",sans-serif`;
+    ctx.fillStyle = s.ct; ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+    ctx.shadowColor='rgba(0,0,0,.3)'; ctx.shadowBlur=4;
+    fillWrapped(ctx, s.title, pad, titleY, split-pad*2-30, H*0.24, 2);
+    ctx.shadowBlur=0;
+  }
 
   // サブタイトル
-  ctx.font = `400 ${H*0.115}px "Noto Sans JP",sans-serif`;
-  ctx.fillStyle = rgba(s.ct, .85);
-  fillWrapped(ctx, s.subtitle, pad, titleY+H*0.27, split-pad*2-30, H*0.14, 1);
+  if (s.subtitle) {
+    ctx.font = `400 ${H*0.115}px "Noto Sans JP",sans-serif`;
+    ctx.fillStyle = rgba(s.ct, .85);
+    fillWrapped(ctx, s.subtitle, pad, titleY+H*0.27, split-pad*2-30, H*0.14, 1);
+  }
 
   // 右：商品画像
   const imgX = split+30, imgW = W-split-80;
   if (s.img) {
     drawContain(ctx, s.img, imgX, 10, imgW, H-20);
-  } else {
-    ctx.fillStyle = '#f0f0f0'; roundRect(ctx, imgX, 20, imgW, H-40, 8); ctx.fill();
-    ctx.fillStyle = '#bbb'; ctx.font='24px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText('🖼️', imgX+imgW/2, H/2);
   }
 
   // 右下：価格
-  ctx.textAlign='right'; ctx.textBaseline='alphabetic';
-  ctx.font=`900 ${H*0.2}px "Noto Sans JP",sans-serif`;
-  ctx.fillStyle=s.c1;
-  ctx.fillText(s.price, W-20, H-18);
+  if (s.price) {
+    ctx.textAlign='right'; ctx.textBaseline='alphabetic';
+    ctx.font=`900 ${H*0.2}px "Noto Sans JP",sans-serif`;
+    ctx.fillStyle=s.c1;
+    ctx.fillText(s.price, W-20, H-18);
+  }
 
   // CTAボタン
-  const bw=120,bh=34;
-  roundRect(ctx, W-bw-16, H*0.1, bw, bh, bh/2);
-  const gb = ctx.createLinearGradient(W-bw-16,0,W-16,0);
-  gb.addColorStop(0,s.c1); gb.addColorStop(1,s.c2||s.c1);
-  ctx.fillStyle=gb; ctx.fill();
-  ctx.font=`bold 14px "Noto Sans JP",sans-serif`;
-  ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillText(s.cta, W-bw/2-16, H*0.1+bh/2);
+  if (s.cta) {
+    const bw=120,bh=34;
+    roundRect(ctx, W-bw-16, H*0.1, bw, bh, bh/2);
+    const gb = ctx.createLinearGradient(W-bw-16,0,W-16,0);
+    gb.addColorStop(0,s.c1); gb.addColorStop(1,s.c2||s.c1);
+    ctx.fillStyle=gb; ctx.fill();
+    ctx.font=`bold 14px "Noto Sans JP",sans-serif`;
+    ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(s.cta, W-bw/2-16, H*0.1+bh/2);
+  }
 
   // ロゴ
   if (s.logo) { ctx.globalAlpha=.9; drawContain(ctx,s.logo,pad,H-44,90,34); ctx.globalAlpha=1; }
@@ -572,28 +576,35 @@ function drawRakutenRect(ctx, W, H, s) {
   ctx.fillStyle=gB; ctx.fillRect(0, imgH, W, stripH);
 
   // 商品名
-  ctx.textAlign='left'; ctx.textBaseline='alphabetic';
-  ctx.font=`bold ${stripH*0.18}px "Noto Sans JP",sans-serif`;
-  ctx.fillStyle='#fff'; ctx.shadowColor='rgba(0,0,0,.2)'; ctx.shadowBlur=2;
-  fillWrapped(ctx, s.subtitle||s.title, 12, imgH+stripH*0.24, W-24, stripH*0.22, 2);
-  ctx.shadowBlur=0;
+  const nameText = s.subtitle || s.title;
+  if (nameText) {
+    ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+    ctx.font=`bold ${stripH*0.18}px "Noto Sans JP",sans-serif`;
+    ctx.fillStyle='#fff'; ctx.shadowColor='rgba(0,0,0,.2)'; ctx.shadowBlur=2;
+    fillWrapped(ctx, nameText, 12, imgH+stripH*0.24, W-24, stripH*0.22, 2);
+    ctx.shadowBlur=0;
+  }
 
   // 価格
-  ctx.font=`900 ${stripH*0.28}px "Noto Sans JP",sans-serif`;
-  ctx.fillStyle=s.c2||'#ffd700';
-  ctx.textAlign='left';
-  ctx.fillText(s.price, 12, H-stripH*0.2);
+  if (s.price) {
+    ctx.font=`900 ${stripH*0.28}px "Noto Sans JP",sans-serif`;
+    ctx.fillStyle=s.c2||'#ffd700';
+    ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+    ctx.fillText(s.price, 12, H-stripH*0.2);
+  }
 
   // CTAボタン
-  const bw=W*0.44, bh=stripH*0.36;
-  roundRect(ctx, W-bw-10, H-bh-8, bw, bh, bh/2);
-  ctx.fillStyle='#fff'; ctx.fill();
-  ctx.font=`bold ${bh*0.42}px "Noto Sans JP",sans-serif`;
-  ctx.fillStyle=s.c1; ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillText(s.cta, W-bw/2-10, H-bh/2-8);
+  if (s.cta) {
+    const bw=W*0.44, bh=stripH*0.36;
+    roundRect(ctx, W-bw-10, H-bh-8, bw, bh, bh/2);
+    ctx.fillStyle='#fff'; ctx.fill();
+    ctx.font=`bold ${bh*0.42}px "Noto Sans JP",sans-serif`;
+    ctx.fillStyle=s.c1; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(s.cta, W-bw/2-10, H-bh/2-8);
+  }
 
   // ロゴ
-  if (s.logo) { ctx.globalAlpha=.8; drawContain(ctx,s.logo,imgX=6,H-36,80,28); ctx.globalAlpha=1; }
+  if (s.logo) { ctx.globalAlpha=.8; drawContain(ctx,s.logo,6,H-36,80,28); ctx.globalAlpha=1; }
 }
 
 // ──────────────────────────────────────────────
@@ -627,38 +638,47 @@ function drawMetaFeed(ctx, W, H, s) {
 
   // メインタイトル
   const titleSize = Math.min(64, H*0.11);
-  ctx.font=`900 ${titleSize}px "Noto Sans JP",sans-serif`;
-  ctx.fillStyle=darken(s.c1, 30);
-  ctx.textAlign='left'; ctx.textBaseline='alphabetic';
-  ctx.shadowColor='rgba(0,0,0,.08)'; ctx.shadowBlur=3;
   const titleY = s.badge ? 140 : 110;
-  const titleLines = fillWrapped(ctx, s.title, pad, titleY, textW-pad*1.5, titleSize*1.3, 2);
-  ctx.shadowBlur=0;
+  let titleLines = 0;
+  if (s.title) {
+    ctx.font=`900 ${titleSize}px "Noto Sans JP",sans-serif`;
+    ctx.fillStyle=darken(s.c1, 30);
+    ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+    ctx.shadowColor='rgba(0,0,0,.08)'; ctx.shadowBlur=3;
+    titleLines = fillWrapped(ctx, s.title, pad, titleY, textW-pad*1.5, titleSize*1.3, 2);
+    ctx.shadowBlur=0;
+  }
 
   // サブテキスト
-  ctx.font=`400 ${H*0.043}px "Noto Sans JP",sans-serif`;
-  ctx.fillStyle='#555';
-  const subY = titleY + titleLines*(titleSize*1.3) + 20;
-  fillWrapped(ctx, s.subtitle, pad, subY, textW-pad*1.5, H*0.052, 2);
+  if (s.subtitle) {
+    ctx.font=`400 ${H*0.043}px "Noto Sans JP",sans-serif`;
+    ctx.fillStyle='#555'; ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+    const subY = titleY + titleLines*(titleSize*1.3) + 20;
+    fillWrapped(ctx, s.subtitle, pad, subY, textW-pad*1.5, H*0.052, 2);
+  }
 
   // 価格ボックス
-  const priceBoxY = H-160;
-  roundRect(ctx, pad, priceBoxY, textW-pad*1.5, 72, 10);
-  ctx.fillStyle=rgba(s.c1,.07); ctx.fill();
-  ctx.strokeStyle=rgba(s.c1,.25); ctx.lineWidth=1.5; ctx.stroke();
-  ctx.font=`900 ${H*0.085}px "Noto Sans JP",sans-serif`;
-  ctx.fillStyle=s.c1; ctx.textAlign='left'; ctx.textBaseline='middle';
-  ctx.fillText(s.price, pad+16, priceBoxY+36);
+  if (s.price) {
+    const priceBoxY = H-160;
+    roundRect(ctx, pad, priceBoxY, textW-pad*1.5, 72, 10);
+    ctx.fillStyle=rgba(s.c1,.07); ctx.fill();
+    ctx.strokeStyle=rgba(s.c1,.25); ctx.lineWidth=1.5; ctx.stroke();
+    ctx.font=`900 ${H*0.085}px "Noto Sans JP",sans-serif`;
+    ctx.fillStyle=s.c1; ctx.textAlign='left'; ctx.textBaseline='middle';
+    ctx.fillText(s.price, pad+16, priceBoxY+36);
+  }
 
   // CTAボタン
-  const bh=58, bw=textW-pad*1.5;
-  roundRect(ctx, pad, H-80, bw, bh, bh/2);
-  const gb=ctx.createLinearGradient(pad,0,pad+bw,0);
-  gb.addColorStop(0,s.c1); gb.addColorStop(1,lighten(s.c1,30));
-  ctx.fillStyle=gb; ctx.fill();
-  ctx.font=`bold ${H*0.052}px "Noto Sans JP",sans-serif`;
-  ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillText(s.cta, pad+bw/2, H-80+bh/2);
+  if (s.cta) {
+    const bh=58, bw=textW-pad*1.5;
+    roundRect(ctx, pad, H-80, bw, bh, bh/2);
+    const gb=ctx.createLinearGradient(pad,0,pad+bw,0);
+    gb.addColorStop(0,s.c1); gb.addColorStop(1,lighten(s.c1,30));
+    ctx.fillStyle=gb; ctx.fill();
+    ctx.font=`bold ${H*0.052}px "Noto Sans JP",sans-serif`;
+    ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(s.cta, pad+bw/2, H-80+bh/2);
+  }
 
   // 右：商品画像
   ctx.fillStyle='#f2f2f2'; ctx.fillRect(textW, 0, imgW, H);
@@ -726,25 +746,31 @@ function drawMetaSquare(ctx, W, H, s) {
 
   // タイトル
   const bh2 = s.badge ? 50 : 0;
-  ctx.font=`900 ${remH*0.22}px "Noto Sans JP",sans-serif`;
-  ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='alphabetic';
-  ctx.shadowColor='rgba(0,0,0,.5)'; ctx.shadowBlur=8;
-  fillWrapped(ctx, s.title, W/2, textY+bh2+remH*0.24, W*0.85, remH*0.26, 2);
-  ctx.shadowBlur=0;
+  if (s.title) {
+    ctx.font=`900 ${remH*0.22}px "Noto Sans JP",sans-serif`;
+    ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='alphabetic';
+    ctx.shadowColor='rgba(0,0,0,.5)'; ctx.shadowBlur=8;
+    fillWrapped(ctx, s.title, W/2, textY+bh2+remH*0.24, W*0.85, remH*0.26, 2);
+    ctx.shadowBlur=0;
+  }
 
   // 価格
-  ctx.font=`900 ${remH*0.28}px "Noto Sans JP",sans-serif`;
-  ctx.fillStyle=s.c2||'#ffd700';
-  ctx.textAlign='center'; ctx.textBaseline='alphabetic';
-  ctx.fillText(s.price, W/2, H-remH*0.08-10);
+  if (s.price) {
+    ctx.font=`900 ${remH*0.28}px "Noto Sans JP",sans-serif`;
+    ctx.fillStyle=s.c2||'#ffd700';
+    ctx.textAlign='center'; ctx.textBaseline='alphabetic';
+    ctx.fillText(s.price, W/2, H-remH*0.08-10);
+  }
 
   // CTAボタン
-  const bw3=W*0.6, bh3=remH*0.22;
-  roundRect(ctx, (W-bw3)/2, H-bh3-16, bw3, bh3, bh3/2);
-  ctx.fillStyle='#fff'; ctx.fill();
-  ctx.font=`bold ${bh3*0.44}px "Noto Sans JP",sans-serif`;
-  ctx.fillStyle=s.c1; ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillText(s.cta, W/2, H-bh3/2-16);
+  if (s.cta) {
+    const bw3=W*0.6, bh3=remH*0.22;
+    roundRect(ctx, (W-bw3)/2, H-bh3-16, bw3, bh3, bh3/2);
+    ctx.fillStyle='#fff'; ctx.fill();
+    ctx.font=`bold ${bh3*0.44}px "Noto Sans JP",sans-serif`;
+    ctx.fillStyle=s.c1; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(s.cta, W/2, H-bh3/2-16);
+  }
 
   // ロゴ
   if (s.logo) { ctx.globalAlpha=.7; drawContain(ctx,s.logo,20,20,120,44); ctx.globalAlpha=1; }
@@ -797,42 +823,45 @@ function drawMetaStories(ctx, W, H, s) {
   ctx.fillStyle=s.c1; ctx.fillRect(pad, textZoneY+20, 80, 5);
 
   // タイトル
-  ctx.font=`900 ${textZoneH*0.115}px "Noto Sans JP",sans-serif`;
-  ctx.fillStyle='#fff'; ctx.textAlign='left'; ctx.textBaseline='alphabetic';
-  ctx.shadowColor='rgba(0,0,0,.4)'; ctx.shadowBlur=6;
-  const titleLines=fillWrapped(ctx, s.title, pad, textZoneY+80, W-pad*2, textZoneH*0.135, 3);
-  ctx.shadowBlur=0;
+  let storyTitleLines = 0;
+  if (s.title) {
+    ctx.font=`900 ${textZoneH*0.115}px "Noto Sans JP",sans-serif`;
+    ctx.fillStyle='#fff'; ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+    ctx.shadowColor='rgba(0,0,0,.4)'; ctx.shadowBlur=6;
+    storyTitleLines = fillWrapped(ctx, s.title, pad, textZoneY+80, W-pad*2, textZoneH*0.135, 3);
+    ctx.shadowBlur=0;
+  }
 
   // サブテキスト
-  ctx.font=`400 ${textZoneH*0.065}px "Noto Sans JP",sans-serif`;
-  ctx.fillStyle=rgba('#ffffff',.75);
-  const subY=textZoneY+80+titleLines*(textZoneH*0.135)+20;
-  fillWrapped(ctx, s.subtitle, pad, subY, W-pad*2, textZoneH*0.08, 2);
+  if (s.subtitle) {
+    ctx.font=`400 ${textZoneH*0.065}px "Noto Sans JP",sans-serif`;
+    ctx.fillStyle=rgba('#ffffff',.75); ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+    const subY=textZoneY+80+storyTitleLines*(textZoneH*0.135)+20;
+    fillWrapped(ctx, s.subtitle, pad, subY, W-pad*2, textZoneH*0.08, 2);
+  }
 
   // 価格
-  ctx.font=`900 ${textZoneH*0.14}px "Noto Sans JP",sans-serif`;
-  ctx.fillStyle=s.c2||'#ffd700';
-  ctx.textAlign='left'; ctx.textBaseline='alphabetic';
-  ctx.fillText(s.price, pad, H-180);
+  if (s.price) {
+    ctx.font=`900 ${textZoneH*0.14}px "Noto Sans JP",sans-serif`;
+    ctx.fillStyle=s.c2||'#ffd700';
+    ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+    ctx.fillText(s.price, pad, H-180);
+  }
 
   // CTAボタン
-  const bw=W-pad*2, bh=110;
-  roundRect(ctx, pad, H-bh-40, bw, bh, bh/2);
-  const gb2=ctx.createLinearGradient(pad,0,pad+bw,0);
-  gb2.addColorStop(0,s.c1); gb2.addColorStop(1,lighten(s.c1,40));
-  ctx.fillStyle=gb2; ctx.fill();
-  ctx.font=`bold ${bh*0.42}px "Noto Sans JP",sans-serif`;
-  ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillText(s.cta, W/2, H-bh/2-40);
+  if (s.cta) {
+    const bw=W-pad*2, bh=110;
+    roundRect(ctx, pad, H-bh-40, bw, bh, bh/2);
+    const gb2=ctx.createLinearGradient(pad,0,pad+bw,0);
+    gb2.addColorStop(0,s.c1); gb2.addColorStop(1,lighten(s.c1,40));
+    ctx.fillStyle=gb2; ctx.fill();
+    ctx.font=`bold ${bh*0.42}px "Noto Sans JP",sans-serif`;
+    ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(s.cta, W/2, H-bh/2-40);
+  }
 
   // ロゴ
   if (s.logo) { ctx.globalAlpha=.8; drawContain(ctx,s.logo, pad, imgH-120, 150, 60); ctx.globalAlpha=1; }
-  else {
-    // ブランド名プレースホルダー
-    ctx.font=`bold 28px "Noto Sans JP",sans-serif`;
-    ctx.fillStyle=rgba('#ffffff',.5); ctx.textAlign='left'; ctx.textBaseline='middle';
-    ctx.fillText('YOUR BRAND', pad, imgH-90);
-  }
 }
 </script>
 </body>

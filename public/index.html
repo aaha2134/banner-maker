@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>バナー自動生成ツール</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    :root{
+      --bg:#0f0f13;--surface:#1a1a23;--border:#2a2a38;
+      --accent:#e60033;--text:#f0f0f5;--muted:#888;
+    }
+    body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+    header{background:linear-gradient(135deg,#1a0010,#0a0a1a);border-bottom:1px solid var(--border);padding:16px 28px;display:flex;align-items:center;gap:14px;}
+    .logo{font-size:22px;font-weight:900;letter-spacing:-.5px;}
+    .logo span{color:var(--accent);}
+    .logo-sub{font-size:12px;color:var(--muted);margin-top:2px;}
+
+    .main{display:grid;grid-template-columns:380px 1fr;gap:0;min-height:calc(100vh - 58px);}
+
+    /* ===== 左パネル ===== */
+    .panel{background:var(--surface);border-right:1px solid var(--border);padding:24px;overflow-y:auto;max-height:calc(100vh - 58px);}
+    .section-title{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;display:flex;align-items:center;gap:6px;}
+    .section-title::after{content:'';flex:1;height:1px;background:var(--border);}
+
+    /* アップロードゾーン */
+    .upload-zone{
+      border:2px dashed var(--border);border-radius:12px;padding:28px 16px;
+      text-align:center;cursor:pointer;transition:all .2s;position:relative;
+      background:rgba(255,255,255,.02);margin-bottom:8px;
+    }
+    .upload-zone:hover,.upload-zone.dragover{border-color:var(--accent);background:rgba(230,0,51,.05);}
+    .upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+    .upload-zone .icon{font-size:32px;margin-bottom:8px;}
+    .upload-zone .label{font-size:13px;color:var(--muted);}
+    .upload-zone .sublabel{font-size:11px;color:#555;margin-top:4px;}
+    .preview-img{max-width:100%;max-height:120px;border-radius:8px;margin-top:8px;object-fit:contain;}
+
+    /* フォーム */
+    .field{margin-bottom:14px;}
+    .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;font-weight:700;}
+    .field input,.field textarea,.field select{
+      width:100%;background:#12121a;border:1px solid var(--border);border-radius:8px;
+      padding:10px 12px;color:var(--text);font-size:14px;font-family:inherit;outline:none;
+      transition:border-color .2s;
+    }
+    .field input:focus,.field textarea:focus{border-color:var(--accent);}
+    .field textarea{resize:vertical;min-height:60px;}
+
+    .color-row{display:flex;gap:10px;}
+    .color-field{flex:1;}
+    .color-field input[type=color]{height:42px;padding:4px 6px;cursor:pointer;}
+
+    .badge-select{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;}
+    .badge-opt{
+      padding:6px 10px;border:1px solid var(--border);border-radius:6px;
+      font-size:11px;cursor:pointer;text-align:center;transition:all .2s;background:#12121a;
+    }
+    .badge-opt.active,.badge-opt:hover{border-color:var(--accent);color:var(--accent);}
+
+    .generate-btn{
+      width:100%;padding:14px;border:none;border-radius:10px;font-size:15px;font-weight:700;
+      cursor:pointer;margin-top:8px;transition:all .2s;font-family:inherit;
+      background:linear-gradient(135deg,#e60033,#ff4466);color:#fff;
+      box-shadow:0 4px 20px rgba(230,0,51,.3);
+    }
+    .generate-btn:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(230,0,51,.4);}
+    .generate-btn:active{transform:translateY(0);}
+
+    /* ===== 右パネル ===== */
+    .output{padding:28px;overflow-y:auto;max-height:calc(100vh - 58px);background:#0d0d11;}
+
+    .banners-grid{display:flex;flex-direction:column;gap:32px;}
+
+    .banner-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;}
+    .banner-card-header{
+      padding:14px 18px;display:flex;align-items:center;justify-content:space-between;
+      border-bottom:1px solid var(--border);
+    }
+    .banner-label{font-size:13px;font-weight:700;}
+    .banner-size{font-size:11px;color:var(--muted);margin-left:8px;}
+    .banner-platform{
+      font-size:10px;font-weight:700;padding:3px 8px;border-radius:4px;
+    }
+    .platform-rakuten{background:rgba(230,0,51,.15);color:#ff4466;}
+    .platform-meta{background:rgba(24,119,242,.15);color:#4a9eff;}
+
+    .banner-preview{
+      padding:16px;background:#111118;display:flex;justify-content:center;align-items:center;
+      overflow:hidden;
+    }
+    .canvas-wrap{
+      position:relative;transform-origin:top center;
+    }
+    canvas{display:block;border-radius:4px;}
+
+    .banner-footer{padding:12px 18px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:center;}
+    .dl-btn{
+      padding:8px 16px;border:none;border-radius:6px;font-size:12px;font-weight:700;
+      cursor:pointer;font-family:inherit;transition:all .2s;
+    }
+    .dl-btn-png{background:#e60033;color:#fff;}
+    .dl-btn-jpg{background:#333;color:#ccc;}
+    .dl-btn:hover{opacity:.85;}
+    .dl-all-btn{
+      margin-left:auto;padding:8px 14px;border:1px solid var(--border);border-radius:6px;
+      font-size:12px;color:var(--muted);cursor:pointer;background:transparent;font-family:inherit;
+      transition:all .2s;
+    }
+    .dl-all-btn:hover{border-color:var(--accent);color:var(--accent);}
+
+    .empty-state{
+      text-align:center;padding:80px 40px;color:var(--muted);
+    }
+    .empty-state .icon{font-size:56px;margin-bottom:16px;opacity:.4;}
+    .empty-state p{font-size:14px;line-height:1.8;}
+
+    /* スクロールバー */
+    ::-webkit-scrollbar{width:6px;}
+    ::-webkit-scrollbar-track{background:transparent;}
+    ::-webkit-scrollbar-thumb{background:#333;border-radius:3px;}
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">Banner <span>Maker</span></div>
+    <div class="logo-sub">楽天・Meta広告 5パターン自動生成</div>
+  </div>
+</header>
+
+<div class="main">
+
+<!-- ===== 左パネル（入力） ===== -->
+<div class="panel">
+
+  <p class="section-title">商品画像</p>
+  <div class="upload-zone" id="uploadZone">
+    <input type="file" id="imageInput" accept="image/*">
+    <div class="icon">🖼️</div>
+    <div class="label">クリックまたはドラッグ&ドロップ</div>
+    <div class="sublabel">PNG / JPG / WEBP（推奨：正方形）</div>
+  </div>
+  <img id="previewImg" class="preview-img" style="display:none">
+
+  <p class="section-title" style="margin-top:20px">ロゴ（任意）</p>
+  <div class="upload-zone" id="logoZone" style="padding:14px">
+    <input type="file" id="logoInput" accept="image/*">
+    <div class="icon" style="font-size:22px">🏷️</div>
+    <div class="label" style="font-size:12px">ブランドロゴをアップロード</div>
+  </div>
+  <img id="previewLogo" class="preview-img" style="display:none;max-height:60px">
+
+  <p class="section-title" style="margin-top:20px">テキスト素材</p>
+  <div class="field">
+    <label>メインキャッチコピー（大見出し）</label>
+    <input type="text" id="title" placeholder="例：送料無料！今だけ限定価格" maxlength="40">
+  </div>
+  <div class="field">
+    <label>サブテキスト（小見出し）</label>
+    <input type="text" id="subtitle" placeholder="例：高保湿スキンケアセット" maxlength="50">
+  </div>
+  <div class="field">
+    <label>価格</label>
+    <input type="text" id="price" placeholder="例：¥3,980（税込）" maxlength="20">
+  </div>
+  <div class="field">
+    <label>CTAボタンテキスト</label>
+    <input type="text" id="cta" placeholder="例：今すぐ購入" maxlength="16">
+  </div>
+
+  <p class="section-title" style="margin-top:20px">バッジ・ラベル</p>
+  <div class="badge-select" id="badgeSelect">
+    <div class="badge-opt" data-val="">なし</div>
+    <div class="badge-opt active" data-val="楽天1位">楽天1位</div>
+    <div class="badge-opt" data-val="送料無料">送料無料</div>
+    <div class="badge-opt" data-val="期間限定">期間限定</div>
+    <div class="badge-opt" data-val="SALE">SALE</div>
+    <div class="badge-opt" data-val="NEW">NEW</div>
+    <div class="badge-opt" data-val="数量限定">数量限定</div>
+    <div class="badge-opt" data-val="ポイント10倍">ポイント10倍</div>
+  </div>
+
+  <p class="section-title" style="margin-top:20px">カラー設定</p>
+  <div class="color-row">
+    <div class="field color-field">
+      <label>メインカラー</label>
+      <input type="color" id="colorMain" value="#e60033">
+    </div>
+    <div class="field color-field">
+      <label>アクセントカラー</label>
+      <input type="color" id="colorAccent" value="#ff9900">
+    </div>
+    <div class="field color-field">
+      <label>テキストカラー</label>
+      <input type="color" id="colorText" value="#ffffff">
+    </div>
+  </div>
+
+  <button class="generate-btn" onclick="generateAll()">✨ 5パターン生成</button>
+
+</div>
+
+<!-- ===== 右パネル（出力） ===== -->
+<div class="output" id="output">
+  <div class="empty-state">
+    <div class="icon">🎨</div>
+    <p>素材を入力して<br>「5パターン生成」ボタンを押すと<br>バナーが自動生成されます</p>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<script>
+// ============================================================
+//  状態管理
+// ============================================================
+let productImg = null;
+let logoImg    = null;
+let selectedBadge = '楽天1位';
+
+// バッジ選択
+document.querySelectorAll('.badge-opt').forEach(el => {
+  el.addEventListener('click', () => {
+    document.querySelectorAll('.badge-opt').forEach(e => e.classList.remove('active'));
+    el.classList.add('active');
+    selectedBadge = el.dataset.val;
+  });
+});
+
+// 画像アップロード
+function setupUpload(inputId, previewId, setter) {
+  const input   = document.getElementById(inputId);
+  const preview = document.getElementById(previewId);
+  const zone    = input.closest('.upload-zone');
+
+  input.addEventListener('change', e => handleFile(e.target.files[0]));
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+  zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('dragover'); handleFile(e.dataTransfer.files[0]); });
+
+  function handleFile(file) {
+    if (!file || !file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const img = new Image();
+      img.onload = () => {
+        setter(img);
+        preview.src = ev.target.result;
+        preview.style.display = 'block';
+        zone.querySelector('.icon').style.display = 'none';
+        zone.querySelector('.label').style.display = 'none';
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+}
+
+setupUpload('imageInput', 'previewImg', img => productImg = img);
+setupUpload('logoInput',  'previewLogo', img => logoImg = img);
+
+// ============================================================
+//  テンプレート定義
+// ============================================================
+const TEMPLATES = [
+  { id:'rakuten_top',    label:'楽天 ショップトップバナー', size:'976 × 200', platform:'rakuten', w:976,  h:200  },
+  { id:'rakuten_rect',   label:'楽天 レクタングルバナー',   size:'300 × 250', platform:'rakuten', w:300,  h:250  },
+  { id:'meta_feed',      label:'Meta広告 フィード',          size:'1200 × 628',platform:'meta',    w:1200, h:628  },
+  { id:'meta_square',    label:'Meta広告 スクエア',          size:'1080 × 1080',platform:'meta',   w:1080, h:1080 },
+  { id:'meta_stories',   label:'Meta広告 ストーリーズ',      size:'1080 × 1920',platform:'meta',   w:1080, h:1920 },
+];
+
+// ============================================================
+//  生成メイン
+// ============================================================
+async function generateAll() {
+  await document.fonts.ready;
+
+  const state = {
+    title:   document.getElementById('title').value   || 'キャッチコピーをここに入力',
+    subtitle:document.getElementById('subtitle').value|| 'サブテキスト・商品名',
+    price:   document.getElementById('price').value   || '¥3,980（税込）',
+    cta:     document.getElementById('cta').value     || '今すぐ購入',
+    badge:   selectedBadge,
+    c1:      document.getElementById('colorMain').value,
+    c2:      document.getElementById('colorAccent').value,
+    ct:      document.getElementById('colorText').value,
+    img:     productImg,
+    logo:    logoImg,
+  };
+
+  const output = document.getElementById('output');
+  output.innerHTML = `<div class="banners-grid" id="bannersGrid"></div>`;
+  const grid = document.getElementById('bannersGrid');
+
+  for (const tmpl of TEMPLATES) {
+    const card = buildCard(tmpl);
+    grid.appendChild(card);
+
+    const canvas = card.querySelector('canvas');
+    canvas.width  = tmpl.w;
+    canvas.height = tmpl.h;
+
+    await drawTemplate(canvas, tmpl, state);
+    scaleCanvas(card, tmpl);
+  }
+}
+
+// カードHTML生成
+function buildCard(tmpl) {
+  const div = document.createElement('div');
+  div.className = 'banner-card';
+  div.innerHTML = `
+    <div class="banner-card-header">
+      <div>
+        <span class="banner-label">${tmpl.label}</span>
+        <span class="banner-size">${tmpl.size} px</span>
+      </div>
+      <span class="banner-platform platform-${tmpl.platform}">${tmpl.platform === 'rakuten' ? '楽天市場' : 'Meta Ads'}</span>
+    </div>
+    <div class="banner-preview">
+      <div class="canvas-wrap" id="wrap_${tmpl.id}">
+        <canvas id="canvas_${tmpl.id}"></canvas>
+      </div>
+    </div>
+    <div class="banner-footer">
+      <button class="dl-btn dl-btn-png" onclick="download('${tmpl.id}','png')">📥 PNG</button>
+      <button class="dl-btn dl-btn-jpg" onclick="download('${tmpl.id}','jpg')">📥 JPG</button>
+      <button class="dl-all-btn" onclick="downloadAll()">全部ダウンロード</button>
+    </div>
+  `;
+  div.querySelector('canvas').id = `canvas_${tmpl.id}`;
+  return div;
+}
+
+// プレビュー表示用スケール
+function scaleCanvas(card, tmpl) {
+  const wrap = card.querySelector('.canvas-wrap');
+  const previewArea = card.querySelector('.banner-preview');
+  const maxW = previewArea.clientWidth - 32;
+  const maxH = 360;
+  const scaleW = maxW / tmpl.w;
+  const scaleH = maxH / tmpl.h;
+  const scale  = Math.min(scaleW, scaleH, 1);
+  wrap.style.transform = `scale(${scale})`;
+  wrap.style.width  = tmpl.w + 'px';
+  wrap.style.height = tmpl.h + 'px';
+  previewArea.style.height = Math.round(tmpl.h * scale + 32) + 'px';
+}
+
+// ダウンロード
+function download(id, fmt) {
+  const canvas = document.getElementById(`canvas_${id}`);
+  const tmpl   = TEMPLATES.find(t => t.id === id);
+  const a = document.createElement('a');
+  a.download = `banner_${id}.${fmt}`;
+  a.href = fmt === 'png'
+    ? canvas.toDataURL('image/png')
+    : canvas.toDataURL('image/jpeg', .92);
+  a.click();
+}
+
+function downloadAll() {
+  TEMPLATES.forEach(t => download(t.id, 'png'));
+}
+
+// ============================================================
+//  Canvas 描画ヘルパー
+// ============================================================
+function hex2rgb(hex) {
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return {r,g,b};
+}
+function rgba(hex, a) {
+  const {r,g,b} = hex2rgb(hex);
+  return `rgba(${r},${g},${b},${a})`;
+}
+function lighten(hex, amt) {
+  const {r,g,b} = hex2rgb(hex);
+  return `rgb(${Math.min(255,r+amt)},${Math.min(255,g+amt)},${Math.min(255,b+amt)})`;
+}
+function darken(hex, amt) {
+  const {r,g,b} = hex2rgb(hex);
+  return `rgb(${Math.max(0,r-amt)},${Math.max(0,g-amt)},${Math.max(0,b-amt)})`;
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.lineTo(x+w-r, y); ctx.arcTo(x+w, y, x+w, y+r, r);
+  ctx.lineTo(x+w, y+h-r); ctx.arcTo(x+w, y+h, x+w-r, y+h, r);
+  ctx.lineTo(x+r, y+h); ctx.arcTo(x, y+h, x, y+h-r, r);
+  ctx.lineTo(x, y+r); ctx.arcTo(x, y, x+r, y, r);
+  ctx.closePath();
+}
+
+function drawCover(ctx, img, x, y, w, h) {
+  ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+  const s = Math.max(w/img.width, h/img.height);
+  const sw = img.width*s, sh = img.height*s;
+  ctx.drawImage(img, x+(w-sw)/2, y+(h-sh)/2, sw, sh);
+  ctx.restore();
+}
+
+function drawContain(ctx, img, x, y, w, h) {
+  const s = Math.min(w/img.width, h/img.height);
+  const sw = img.width*s, sh = img.height*s;
+  ctx.drawImage(img, x+(w-sw)/2, y+(h-sh)/2, sw, sh);
+}
+
+// テキスト折り返し
+function fillWrapped(ctx, text, x, y, maxW, lineH, maxLines=99) {
+  let line='', lines=[];
+  for (const ch of String(text)) {
+    const test = line+ch;
+    if (ctx.measureText(test).width > maxW && line) { lines.push(line); line=ch; }
+    else line=test;
+  }
+  if (line) lines.push(line);
+  lines.slice(0, maxLines).forEach((l,i) => ctx.fillText(l, x, y+i*lineH));
+  return Math.min(lines.length, maxLines);
+}
+
+// バッジ描画
+function drawBadge(ctx, text, x, y, c1, c2) {
+  if (!text) return;
+  ctx.font = 'bold 14px "Noto Sans JP", sans-serif';
+  const tw = ctx.measureText(text).width;
+  const pw=14, ph=8, r=6;
+  roundRect(ctx, x, y, tw+pw*2, 28+ph, r);
+  const grd = ctx.createLinearGradient(x, y, x+tw+pw*2, y);
+  grd.addColorStop(0, c1); grd.addColorStop(1, c2||c1);
+  ctx.fillStyle = grd; ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.textBaseline='middle';
+  ctx.fillText(text, x+pw, y+14+ph/2);
+}
+
+// ============================================================
+//  テンプレート描画
+// ============================================================
+async function drawTemplate(canvas, tmpl, s) {
+  const ctx = canvas.getContext('2d');
+  switch(tmpl.id) {
+    case 'rakuten_top':    drawRakutenTop(ctx, tmpl.w, tmpl.h, s);    break;
+    case 'rakuten_rect':   drawRakutenRect(ctx, tmpl.w, tmpl.h, s);   break;
+    case 'meta_feed':      drawMetaFeed(ctx, tmpl.w, tmpl.h, s);      break;
+    case 'meta_square':    drawMetaSquare(ctx, tmpl.w, tmpl.h, s);    break;
+    case 'meta_stories':   drawMetaStories(ctx, tmpl.w, tmpl.h, s);   break;
+  }
+}
+
+// ──────────────────────────────────────────────
+// [1] 楽天 ショップトップ (976×200)
+// ──────────────────────────────────────────────
+function drawRakutenTop(ctx, W, H, s) {
+  const split = Math.round(W * 0.52);
+
+  // 左背景（グラデーション）
+  const gL = ctx.createLinearGradient(0,0,split,H);
+  gL.addColorStop(0, darken(s.c1,20)); gL.addColorStop(1, s.c1);
+  ctx.fillStyle = gL; ctx.fillRect(0, 0, split+40, H);
+
+  // 右背景
+  ctx.fillStyle = '#fff'; ctx.fillRect(split-30, 0, W-split+30, H);
+
+  // 斜め仕切り
+  ctx.beginPath();
+  ctx.moveTo(split-10, 0); ctx.lineTo(split+50, 0);
+  ctx.lineTo(split+10, H); ctx.lineTo(split-50, H);
+  ctx.closePath(); ctx.fillStyle = s.c1; ctx.fill();
+
+  // 左：テキストゾーン
+  const pad = 28;
+  ctx.textBaseline = 'alphabetic';
+
+  // バッジ
+  if (s.badge) {
+    ctx.save();
+    const bw = 120, bh = 26;
+    roundRect(ctx, pad, 18, bw, bh, 13);
+    ctx.fillStyle = s.c2; ctx.fill();
+    ctx.font = `bold 13px "Noto Sans JP",sans-serif`;
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline='middle';
+    ctx.fillText(s.badge, pad+bw/2, 18+bh/2);
+    ctx.restore();
+  }
+
+  // タイトル
+  ctx.font = `900 ${H*0.22}px "Noto Sans JP",sans-serif`;
+  ctx.fillStyle = s.ct; ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+  ctx.shadowColor='rgba(0,0,0,.3)'; ctx.shadowBlur=4;
+  const titleY = s.badge ? 78 : 66;
+  fillWrapped(ctx, s.title, pad, titleY, split-pad*2-30, H*0.24, 2);
+  ctx.shadowBlur=0;
+
+  // サブタイトル
+  ctx.font = `400 ${H*0.115}px "Noto Sans JP",sans-serif`;
+  ctx.fillStyle = rgba(s.ct, .85);
+  fillWrapped(ctx, s.subtitle, pad, titleY+H*0.27, split-pad*2-30, H*0.14, 1);
+
+  // 右：商品画像
+  const imgX = split+30, imgW = W-split-80;
+  if (s.img) {
+    drawContain(ctx, s.img, imgX, 10, imgW, H-20);
+  } else {
+    ctx.fillStyle = '#f0f0f0'; roundRect(ctx, imgX, 20, imgW, H-40, 8); ctx.fill();
+    ctx.fillStyle = '#bbb'; ctx.font='24px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('🖼️', imgX+imgW/2, H/2);
+  }
+
+  // 右下：価格
+  ctx.textAlign='right'; ctx.textBaseline='alphabetic';
+  ctx.font=`900 ${H*0.2}px "Noto Sans JP",sans-serif`;
+  ctx.fillStyle=s.c1;
+  ctx.fillText(s.price, W-20, H-18);
+
+  // CTAボタン
+  const bw=120,bh=34;
+  roundRect(ctx, W-bw-16, H*0.1, bw, bh, bh/2);
+  const gb = ctx.createLinearGradient(W-bw-16,0,W-16,0);
+  gb.addColorStop(0,s.c1); gb.addColorStop(1,s.c2||s.c1);
+  ctx.fillStyle=gb; ctx.fill();
+  ctx.font=`bold 14px "Noto Sans JP",sans-serif`;
+  ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(s.cta, W-bw/2-16, H*0.1+bh/2);
+
+  // ロゴ
+  if (s.logo) { ctx.globalAlpha=.9; drawContain(ctx,s.logo,pad,H-44,90,34); ctx.globalAlpha=1; }
+}
+
+// ──────────────────────────────────────────────
+// [2] 楽天 レクタングル (300×250)
+// ──────────────────────────────────────────────
+function drawRakutenRect(ctx, W, H, s) {
+  const imgH = Math.round(H*0.55);
+
+  // 背景
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+
+  // 商品画像エリア
+  ctx.fillStyle = '#f7f7f7'; ctx.fillRect(0, 0, W, imgH);
+  if (s.img) {
+    drawContain(ctx, s.img, 10, 6, W-20, imgH-12);
+  } else {
+    ctx.fillStyle='#e0e0e0'; ctx.fillRect(0,0,W,imgH);
+    ctx.fillStyle='#bbb'; ctx.font='40px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('🖼️', W/2, imgH/2);
+  }
+
+  // バッジ（左上）
+  if (s.badge) {
+    const bw=ctx.measureText(s.badge).width+24, bh=28;
+    ctx.font=`bold 13px "Noto Sans JP",sans-serif`;
+    const bw2=ctx.measureText(s.badge).width+24;
+    roundRect(ctx, 10, 10, bw2, bh, 4);
+    ctx.fillStyle=s.c1; ctx.fill();
+    ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(s.badge, 10+bw2/2, 10+bh/2);
+  }
+
+  // 下部帯
+  const stripH = H-imgH;
+  const gB = ctx.createLinearGradient(0, imgH, 0, H);
+  gB.addColorStop(0, darken(s.c1,10)); gB.addColorStop(1, s.c1);
+  ctx.fillStyle=gB; ctx.fillRect(0, imgH, W, stripH);
+
+  // 商品名
+  ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+  ctx.font=`bold ${stripH*0.18}px "Noto Sans JP",sans-serif`;
+  ctx.fillStyle='#fff'; ctx.shadowColor='rgba(0,0,0,.2)'; ctx.shadowBlur=2;
+  fillWrapped(ctx, s.subtitle||s.title, 12, imgH+stripH*0.24, W-24, stripH*0.22, 2);
+  ctx.shadowBlur=0;
+
+  // 価格
+  ctx.font=`900 ${stripH*0.28}px "Noto Sans JP",sans-serif`;
+  ctx.fillStyle=s.c2||'#ffd700';
+  ctx.textAlign='left';
+  ctx.fillText(s.price, 12, H-stripH*0.2);
+
+  // CTAボタン
+  const bw=W*0.44, bh=stripH*0.36;
+  roundRect(ctx, W-bw-10, H-bh-8, bw, bh, bh/2);
+  ctx.fillStyle='#fff'; ctx.fill();
+  ctx.font=`bold ${bh*0.42}px "Noto Sans JP",sans-serif`;
+  ctx.fillStyle=s.c1; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(s.cta, W-bw/2-10, H-bh/2-8);
+
+  // ロゴ
+  if (s.logo) { ctx.globalAlpha=.8; drawContain(ctx,s.logo,imgX=6,H-36,80,28); ctx.globalAlpha=1; }
+}
+
+// ──────────────────────────────────────────────
+// [3] Meta フィード (1200×628)
+// ──────────────────────────────────────────────
+function drawMetaFeed(ctx, W, H, s) {
+  const imgW = Math.round(W*0.48);
+  const textW = W-imgW;
+
+  // 全体背景
+  const gBg = ctx.createLinearGradient(0, 0, 0, H);
+  gBg.addColorStop(0, lighten(s.c1, 160)||'#fff5f7');
+  gBg.addColorStop(1, '#ffffff');
+  ctx.fillStyle=gBg; ctx.fillRect(0,0,W,H);
+
+  // 左テキストゾーン
+  const pad=56;
+
+  // ブランドバー（上部細ライン）
+  ctx.fillStyle=s.c1; ctx.fillRect(0,0,textW,6);
+
+  // バッジ
+  if (s.badge) {
+    ctx.font=`bold 18px "Noto Sans JP",sans-serif`;
+    const bw=ctx.measureText(s.badge).width+32, bh=36;
+    roundRect(ctx, pad, 30, bw, bh, 4);
+    ctx.fillStyle=s.c2||s.c1; ctx.fill();
+    ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(s.badge, pad+bw/2, 30+bh/2);
+  }
+
+  // メインタイトル
+  const titleSize = Math.min(64, H*0.11);
+  ctx.font=`900 ${titleSize}px "Noto Sans JP",sans-serif`;
+  ctx.fillStyle=darken(s.c1, 30);
+  ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+  ctx.shadowColor='rgba(0,0,0,.08)'; ctx.shadowBlur=3;
+  const titleY = s.badge ? 140 : 110;
+  const titleLines = fillWrapped(ctx, s.title, pad, titleY, textW-pad*1.5, titleSize*1.3, 2);
+  ctx.shadowBlur=0;
+
+  // サブテキスト
+  ctx.font=`400 ${H*0.043}px "Noto Sans JP",sans-serif`;
+  ctx.fillStyle='#555';
+  const subY = titleY + titleLines*(titleSize*1.3) + 20;
+  fillWrapped(ctx, s.subtitle, pad, subY, textW-pad*1.5, H*0.052, 2);
+
+  // 価格ボックス
+  const priceBoxY = H-160;
+  roundRect(ctx, pad, priceBoxY, textW-pad*1.5, 72, 10);
+  ctx.fillStyle=rgba(s.c1,.07); ctx.fill();
+  ctx.strokeStyle=rgba(s.c1,.25); ctx.lineWidth=1.5; ctx.stroke();
+  ctx.font=`900 ${H*0.085}px "Noto Sans JP",sans-serif`;
+  ctx.fillStyle=s.c1; ctx.textAlign='left'; ctx.textBaseline='middle';
+  ctx.fillText(s.price, pad+16, priceBoxY+36);
+
+  // CTAボタン
+  const bh=58, bw=textW-pad*1.5;
+  roundRect(ctx, pad, H-80, bw, bh, bh/2);
+  const gb=ctx.createLinearGradient(pad,0,pad+bw,0);
+  gb.addColorStop(0,s.c1); gb.addColorStop(1,lighten(s.c1,30));
+  ctx.fillStyle=gb; ctx.fill();
+  ctx.font=`bold ${H*0.052}px "Noto Sans JP",sans-serif`;
+  ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(s.cta, pad+bw/2, H-80+bh/2);
+
+  // 右：商品画像
+  ctx.fillStyle='#f2f2f2'; ctx.fillRect(textW, 0, imgW, H);
+  if (s.img) {
+    drawCover(ctx, s.img, textW, 0, imgW, H);
+  } else {
+    ctx.fillStyle='#ddd'; ctx.fillRect(textW,0,imgW,H);
+    ctx.fillStyle='#bbb'; ctx.font='60px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('🖼️', textW+imgW/2, H/2);
+  }
+
+  // ロゴ
+  if (s.logo) { ctx.globalAlpha=.85; drawContain(ctx,s.logo, pad, H-80-52, 100,36); ctx.globalAlpha=1; }
+}
+
+// ──────────────────────────────────────────────
+// [4] Meta スクエア (1080×1080)
+// ──────────────────────────────────────────────
+function drawMetaSquare(ctx, W, H, s) {
+  // 背景グラデーション
+  const gBg=ctx.createLinearGradient(0,0,W,H);
+  gBg.addColorStop(0, darken(s.c1,50));
+  gBg.addColorStop(0.6, darken(s.c1,20));
+  gBg.addColorStop(1, '#0a0a0a');
+  ctx.fillStyle=gBg; ctx.fillRect(0,0,W,H);
+
+  // 装飾円
+  for(const [cx,cy,cr,a] of [[W*.85,H*.1,200,.06],[W*.1,H*.9,180,.05],[W*.5,H*.5,350,.03]]) {
+    ctx.beginPath(); ctx.arc(cx,cy,cr,0,Math.PI*2);
+    ctx.fillStyle=rgba(s.c2||s.c1, a); ctx.fill();
+  }
+
+  // 商品画像（中央上部）
+  const imgSize = Math.round(W*0.56);
+  const imgX=(W-imgSize)/2, imgY=60;
+  if (s.img) {
+    // 円形クリップ
+    ctx.save();
+    ctx.beginPath(); ctx.arc(W/2, imgY+imgSize/2, imgSize/2, 0, Math.PI*2); ctx.clip();
+    drawCover(ctx, s.img, imgX, imgY, imgSize, imgSize);
+    ctx.restore();
+    // 縁取り
+    ctx.beginPath(); ctx.arc(W/2, imgY+imgSize/2, imgSize/2+3, 0, Math.PI*2);
+    ctx.strokeStyle=rgba(s.c2||s.c1,.6); ctx.lineWidth=4; ctx.stroke();
+  } else {
+    ctx.beginPath(); ctx.arc(W/2, imgY+imgSize/2, imgSize/2, 0, Math.PI*2);
+    ctx.fillStyle='rgba(255,255,255,.1)'; ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,.3)'; ctx.font='80px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('🖼️', W/2, imgY+imgSize/2);
+  }
+
+  // 下部テキストゾーン
+  const textY = imgY+imgSize+40;
+  const remH = H-textY-30;
+
+  // バッジ
+  if (s.badge) {
+    ctx.font=`bold 24px "Noto Sans JP",sans-serif`;
+    const bw=ctx.measureText(s.badge).width+40, bh=42;
+    roundRect(ctx, (W-bw)/2, textY, bw, bh, bh/2);
+    ctx.fillStyle=s.c2||s.c1; ctx.fill();
+    ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(s.badge, W/2, textY+bh/2);
+  }
+
+  // タイトル
+  const bh2 = s.badge ? 50 : 0;
+  ctx.font=`900 ${remH*0.22}px "Noto Sans JP",sans-serif`;
+  ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='alphabetic';
+  ctx.shadowColor='rgba(0,0,0,.5)'; ctx.shadowBlur=8;
+  fillWrapped(ctx, s.title, W/2, textY+bh2+remH*0.24, W*0.85, remH*0.26, 2);
+  ctx.shadowBlur=0;
+
+  // 価格
+  ctx.font=`900 ${remH*0.28}px "Noto Sans JP",sans-serif`;
+  ctx.fillStyle=s.c2||'#ffd700';
+  ctx.textAlign='center'; ctx.textBaseline='alphabetic';
+  ctx.fillText(s.price, W/2, H-remH*0.08-10);
+
+  // CTAボタン
+  const bw3=W*0.6, bh3=remH*0.22;
+  roundRect(ctx, (W-bw3)/2, H-bh3-16, bw3, bh3, bh3/2);
+  ctx.fillStyle='#fff'; ctx.fill();
+  ctx.font=`bold ${bh3*0.44}px "Noto Sans JP",sans-serif`;
+  ctx.fillStyle=s.c1; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(s.cta, W/2, H-bh3/2-16);
+
+  // ロゴ
+  if (s.logo) { ctx.globalAlpha=.7; drawContain(ctx,s.logo,20,20,120,44); ctx.globalAlpha=1; }
+}
+
+// ──────────────────────────────────────────────
+// [5] Meta ストーリーズ (1080×1920)
+// ──────────────────────────────────────────────
+function drawMetaStories(ctx, W, H, s) {
+  // 全体背景
+  const gBg=ctx.createLinearGradient(0,0,0,H);
+  gBg.addColorStop(0,'#0a0a0a');
+  gBg.addColorStop(0.5, darken(s.c1,40));
+  gBg.addColorStop(1, '#0a0a0a');
+  ctx.fillStyle=gBg; ctx.fillRect(0,0,W,H);
+
+  // 上部：商品画像
+  const imgH=Math.round(H*0.62);
+  if (s.img) {
+    drawCover(ctx, s.img, 0, 0, W, imgH);
+    // グラデーションオーバーレイ
+    const gOv=ctx.createLinearGradient(0,imgH*0.55,0,imgH);
+    gOv.addColorStop(0,'rgba(0,0,0,0)'); gOv.addColorStop(1,'rgba(0,0,0,.85)');
+    ctx.fillStyle=gOv; ctx.fillRect(0,0,W,imgH);
+  } else {
+    ctx.fillStyle='#222'; ctx.fillRect(0,0,W,imgH);
+    ctx.fillStyle='rgba(255,255,255,.15)'; ctx.font='120px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('🖼️', W/2, imgH*0.5);
+  }
+
+  // 中央：バッジ（画像上の境界に乗せる）
+  const badgeY=imgH-40;
+  if (s.badge) {
+    ctx.font=`bold 32px "Noto Sans JP",sans-serif`;
+    const bw=ctx.measureText(s.badge).width+60, bh=60;
+    roundRect(ctx, (W-bw)/2, badgeY-bh/2, bw, bh, bh/2);
+    const gb=ctx.createLinearGradient((W-bw)/2,0,(W+bw)/2,0);
+    gb.addColorStop(0,s.c1); gb.addColorStop(1,s.c2||s.c1);
+    ctx.fillStyle=gb; ctx.fill();
+    ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(s.badge, W/2, badgeY);
+  }
+
+  // 下部テキストゾーン
+  const textZoneY=imgH+10;
+  const textZoneH=H-textZoneY;
+  const pad=60;
+
+  // 装飾線
+  ctx.fillStyle=s.c1; ctx.fillRect(pad, textZoneY+20, 80, 5);
+
+  // タイトル
+  ctx.font=`900 ${textZoneH*0.115}px "Noto Sans JP",sans-serif`;
+  ctx.fillStyle='#fff'; ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+  ctx.shadowColor='rgba(0,0,0,.4)'; ctx.shadowBlur=6;
+  const titleLines=fillWrapped(ctx, s.title, pad, textZoneY+80, W-pad*2, textZoneH*0.135, 3);
+  ctx.shadowBlur=0;
+
+  // サブテキスト
+  ctx.font=`400 ${textZoneH*0.065}px "Noto Sans JP",sans-serif`;
+  ctx.fillStyle=rgba('#ffffff',.75);
+  const subY=textZoneY+80+titleLines*(textZoneH*0.135)+20;
+  fillWrapped(ctx, s.subtitle, pad, subY, W-pad*2, textZoneH*0.08, 2);
+
+  // 価格
+  ctx.font=`900 ${textZoneH*0.14}px "Noto Sans JP",sans-serif`;
+  ctx.fillStyle=s.c2||'#ffd700';
+  ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+  ctx.fillText(s.price, pad, H-180);
+
+  // CTAボタン
+  const bw=W-pad*2, bh=110;
+  roundRect(ctx, pad, H-bh-40, bw, bh, bh/2);
+  const gb2=ctx.createLinearGradient(pad,0,pad+bw,0);
+  gb2.addColorStop(0,s.c1); gb2.addColorStop(1,lighten(s.c1,40));
+  ctx.fillStyle=gb2; ctx.fill();
+  ctx.font=`bold ${bh*0.42}px "Noto Sans JP",sans-serif`;
+  ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(s.cta, W/2, H-bh/2-40);
+
+  // ロゴ
+  if (s.logo) { ctx.globalAlpha=.8; drawContain(ctx,s.logo, pad, imgH-120, 150, 60); ctx.globalAlpha=1; }
+  else {
+    // ブランド名プレースホルダー
+    ctx.font=`bold 28px "Noto Sans JP",sans-serif`;
+    ctx.fillStyle=rgba('#ffffff',.5); ctx.textAlign='left'; ctx.textBaseline='middle';
+    ctx.fillText('YOUR BRAND', pad, imgH-90);
+  }
+}
+</script>
+</body>
+</html>
